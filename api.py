@@ -22,3 +22,5 @@ def closed_word(word:str):
     a_comparator=levenshtein.Levenshtein("Dictionnaire/teny_clean.txt")
     mot_proche,dist=a_comparator.mot_proche(word)
     return {"closed_word":mot_proche,"distance":dist}
+
+#
