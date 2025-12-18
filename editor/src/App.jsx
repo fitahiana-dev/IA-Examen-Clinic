@@ -216,10 +216,10 @@ export default function App() {
 					shouldNotGroupWhenFull: false
 				},
 				plugins: [
-					AIChat,
-					AIEditorIntegration,
-					AIQuickActions,
-					AIReviewMode,
+					//AIChat,
+					//AIEditorIntegration,
+					//AIQuickActions,
+					//AIReviewMode,
 					Alignment,
 					Autoformat,
 					AutoImage,
