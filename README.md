@@ -18,3 +18,7 @@
 <video width="600" controls>
   <source src="video/Demonstration.mp4" type="video/mp4">
 </video>
+
+https://github.com/fitahiana-dev/IA-Examen-Clinic/blob/module-IA/video/Demonstration.mp4
+
+https://github.com/fitahiana-dev/IA-Examen-Clinic/blob/module-IA/video/Demonstration.mp4
