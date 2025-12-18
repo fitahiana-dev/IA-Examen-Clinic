@@ -541,13 +541,150 @@ export default function App() {
 											editor.plugins.get('AnnotationsUIs').switchTo('narrowSidebar');
 
 											//////////////////////////////////////////////////////////////
+
+											////////////////////////////////////////////////////////////
+											function replaceLastWord(editor, oldWord, newWord) {
+												const model = editor.model;
+												const selection = model.document.selection;
+
+												model.change(writer => {
+													// Position du curseur
+													const position = selection.getFirstPosition();
+
+													if (!position) return;
+
+													// Aller en arrière de la longueur du mot
+													const startPosition = position.getShiftedBy(-oldWord.length);
+
+													// Créer la plage à remplacer
+													const range = writer.createRange(startPosition, position);
+
+													// Supprimer l’ancien mot
+													writer.remove(range);
+
+													// Insérer le nouveau mot
+													writer.insertText(newWord, startPosition);
+												});
+											}
+											function showSuggestionBalloon(editor, suggestion) {
+												const balloon = editor.plugins.get('ContextualBalloon');
+
+												// Supprimer une bulle existante
+												if (balloon.visibleView) {
+													balloon.remove(balloon.visibleView);
+												}
+
+												const view = {
+													element: document.createElement('div'),
+													render() {},
+													destroy() {}
+												};
+
+												view.element.classList.add('ck', 'ck-suggestion-balloon');
+
+												view.element.innerHTML = `
+													<div style="padding:8px;">
+														<strong>Suggestion :</strong> ${suggestion.to}
+														<button class="ck-button">Accepter</button>
+													</div>
+												`;
+
+												view.element.querySelector('button').onclick = () => {
+													replaceLastWord(editor, suggestion.from, suggestion.to);
+													balloon.remove(view);
+												};
+
+												balloon.add({
+													view,
+													position: getBalloonPosition(editor)
+												});
+											}
+											function getBalloonPosition(editor) {
+												const view = editor.editing.view;
+												const domConverter = view.domConverter;
+												const selection = view.document.selection;
+
+												return {
+													target: domConverter.viewRangeToDom(selection.getFirstRange())
+												};
+											}
+
+											///////////////////////////////////////////////////////////
+
 											// Écouter les frappes de touches
 											editor.editing.view.document.on('keydown', (evt, data) => {
 												console.log('Touche pressée:', data.key, data.keyCode);
+												// Espace = ' ' ou 'Space'
+												/*if (data.keyCode === ' ' || data.code === 'Space') {*/
+												if (data.keyCode==32){
+													// Récupérer le contenu HTML
+													console.log("Requete Commence ....");
+													const htmlContent = editor.getData();
+
+													// Nettoyer le texte
+													const textOnly = htmlContent
+														.replace(/<[^>]*>/g, '')
+														.replace(/&nbsp;/g, ' ')
+														.replace(/&amp;/g, '&')
+														.trim();
+
+													// Découper en mots
+													const words = textOnly.split(/\s+/).filter(Boolean);
+													const lastWord = words[words.length - 1];
+
+													if (!lastWord) return;
+
+													console.log('Dernier mot (avant espace) :', lastWord);
+													console.log('Tous les mots:', words);
+
+													// 🔥 Lancer la requête uniquement ici
+													fetch(`http://localhost:8000/getClosedWord/${encodeURIComponent(lastWord)}`)
+														.then(response => {
+															if (!response.ok) {
+																throw new Error("Erreur réseau");
+															}
+															return response.json();
+														})
+														/*.then(data => {
+															console.log("Mot proche :", data.closed_word);
+															console.log("Distance :", data.distance);
+														})*/
+														/*.then(({ closed_word, distance }) => {
+															console.log('Mot proposé:', closed_word, 'Distance:', distance);
+
+															// ❌ mot déjà correct
+															if (distance === 0) return;
+
+															// ✅ remplacement
+															replaceLastWord(editor, lastWord, closed_word);
+														})*/
+														/*.then(({ closed_word, distance }) => {
+															if (distance === 0) return;
+
+															currentSuggestion = {
+																from: lastWord,
+																to: closed_word
+															};
+
+															showSuggestionBalloon(editor, balloon, currentSuggestion);
+														})*/
+
+														.then(({ closed_word, distance }) => {
+															if (distance > 0) {
+																showSuggestionBalloon(editor, {
+																	from: lastWord,
+																	to: closed_word
+																});
+															}
+														})
+														.catch(error => {
+															console.error("Erreur :", error);
+														});
+												}
 											});
 											
 											// Écouter les changements de texte
-											editor.model.document.on('change:data', () => {
+											/*editor.model.document.on('change:data', () => {
 												// Obtenir le texte sans balises HTML
 												const htmlContent = editor.getData();
 												const textOnly = htmlContent
@@ -564,7 +701,28 @@ export default function App() {
 												
 												console.log('Dernier mot:', lastWord);
 												console.log('Tous les mots:', words);
-											});
+
+												// Requête pour la Correction Automatique des mots
+
+												/////////////////////////////////////////////////////////////
+												fetch(`http://localhost:8000/getClosedWord/${encodeURIComponent(lastWord)}`)
+													.then(response => {
+														if (!response.ok) {
+														throw new Error("Erreur réseau");
+														}
+														return response.json();
+													})
+													.then(data => {
+														console.log("Mot proche :", data.closed_word);
+														console.log("Distance :", data.distance);
+													})
+													.catch(error => {
+														console.error("Erreur :", error);
+													});
+												////////////////////////////////////////////////////////////
+
+												
+											});*/
 											}}
 											//////////////////////////////////////////////////////////
 											
