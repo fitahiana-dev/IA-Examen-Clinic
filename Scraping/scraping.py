@@ -62,6 +62,51 @@ class MalagasyScraper:
             print(f"Erreur Wikipedia: {e}")
             return []
     
+    def scrape_all_wikipedia_articles(self):
+        """Scrape tous les articles de Wikipedia malgache par catégories alphabétiques"""
+        base_url = "https://mg.wikipedia.org"
+        all_words = []
+        
+        print("Scraping Wikipedia malgache (tous les articles)...")
+        
+        # Liste des lettres pour récupérer toutes les pages
+        # Wikipedia organise souvent par index alphabétique
+        alphabet = 'ABDEFGHIJKLMNOPRSTV'  # Lettres utilisées en malgache
+        
+        for letter in alphabet:
+            try:
+                # URL pour la liste des pages commençant par cette lettre
+                url = f"{base_url}/w/index.php?title=Manokana:Pejy_rehetra&from={letter}"
+                print(f"  Scraping pages commençant par '{letter}'...")
+                
+                response = self.session.get(url, timeout=10)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Trouver tous les liens d'articles
+                content = soup.find('div', {'class': 'mw-allpages-body'})
+                if not content:
+                    content = soup.find('div', {'id': 'mw-content-text'})
+                
+                if content:
+                    for link in content.find_all('a'):
+                        title = link.get_text().strip()
+                        # Filtrer les liens spéciaux et garder seulement les articles
+                        if title and not title.startswith(('Manokana:', 'Wikipedia:', 'Fichier:', 'Special:')):
+                            if len(title) > 1:
+                                all_words.append({
+                                    'mot': title,
+                                    'source': 'wikipedia_mg'
+                                })
+                
+                print(f"    → {len(all_words)} mots au total")
+                time.sleep(0.5)
+                
+            except Exception as e:
+                print(f"    ❌ Erreur pour '{letter}': {e}")
+        
+        return all_words
+    
     def scrape_tenymalagasy(self, url):
         """Scrape le site tenymalagasy.org"""
         try:
@@ -202,40 +247,44 @@ def main():
     # Créer le dossier Dictionnaire s'il n'existe pas
     os.makedirs('Dictionnaire', exist_ok=True)
     
-    # URLs à scraper
-    wikipedia_url = "https://mg.wikipedia.org/wiki/Wikipedia:Fandraisana"
-    tenymalagasy_url = "https://motmalgache.org/bins/alphaLists"
-    
     all_words = []
     
-    # Scraper Wikipedia
-    print("Scraping Wikipedia malgache...")
-    wiki_words = scraper.scrape_wikipedia_mg(wikipedia_url)
+    # Scraper Wikipedia (TOUS les articles)
+    print("="*60)
+    wiki_words = scraper.scrape_all_wikipedia_articles()
     all_words.extend(wiki_words)
-    print(f"Trouvé {len(wiki_words)} mots sur Wikipedia\n")
-    time.sleep(1)  # Pause pour être poli avec le serveur
+    print(f"✓ Total Wikipedia: {len(wiki_words)} mots\n")
     
     # Scraper Tenymalagasy (toutes les plages)
+    print("="*60)
     print("Scraping Motmalgache (toutes les plages)...")
+    tenymalagasy_url = "https://motmalgache.org/bins/alphaLists"
     teny_words = scraper.scrape_tenymalagasy(tenymalagasy_url)
     all_words.extend(teny_words)
-    print(f"\nTrouvé {len(teny_words)} mots sur Motmalgache")
+    print(f"\n✓ Total Motmalgache: {len(teny_words)} mots")
     
     # Enlever les doublons
+    print("\n" + "="*60)
+    print("Suppression des doublons...")
     all_words = scraper.remove_duplicates(all_words)
-    print(f"\nTotal de mots uniques: {len(all_words)}")
+    print(f"✓ Total de mots uniques: {len(all_words)}")
     
     # Sauvegarder dans le dossier Dictionnaire
+    print("\n" + "="*60)
+    print("Sauvegarde des fichiers...")
     scraper.save_to_txt(all_words, 'Dictionnaire/teny.txt')
-    
-    # Sauvegarder aussi en JSON et CSV pour référence
-    scraper.save_to_json(all_words, 'Dictionnaire/mots_malgaches.json')
-    scraper.save_to_csv(all_words, 'Dictionnaire/mots_malgaches.csv')
+    #scraper.save_to_json(all_words, 'Dictionnaire/mots_malgaches.json')
+    #scraper.save_to_csv(all_words, 'Dictionnaire/mots_malgaches.csv')
     
     # Afficher quelques exemples
-    print("\nExemples de mots récupérés:")
-    for word in all_words[:10]:
-        print(f"- {word['mot']} (source: {word['source']})")
+    print("\n" + "="*60)
+    print("Exemples de mots récupérés:")
+    for word in all_words[:20]:
+        print(f"  • {word['mot']} (source: {word['source']})")
+    
+    print("\n" + "="*60)
+    print(f"✅ TERMINÉ ! {len(all_words)} mots sauvegardés dans Dictionnaire/")
+    print("="*60)
 
 
 if __name__ == "__main__":
