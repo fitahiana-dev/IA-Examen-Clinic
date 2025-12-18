@@ -532,6 +532,15 @@ export default function App() {
 
 									<CKEditor
 										onReady={editor => {
+											////////////////////////////////////////////////////////////////////
+											editor.editing.view.change(writer => {
+												writer.setAttribute(
+													'spellcheck',
+													'false',
+													editor.editing.view.document.getRoot()
+												);
+											});
+											///////////////////////////////////////////////////////////////////
 											editorToolbarRef.current.appendChild(editor.ui.view.toolbar.element);
 											editorMenuBarRef.current.appendChild(editor.ui.view.menuBarView.element);
 
@@ -541,6 +550,78 @@ export default function App() {
 											editor.plugins.get('AnnotationsUIs').switchTo('narrowSidebar');
 
 											//////////////////////////////////////////////////////////////
+											// Fonction de vérification API
+											// 2. Configuration du surlignage visuel (Conversion)
+											// Indique à CKEditor : "Quand il y a un marqueur 'malagasyError', applique la classe CSS '.ck-malagasy-error'"
+											editor.conversion.for('editingDowncast').markerToHighlight({
+												model: 'malagasyError',
+												view: { classes: 'ck-malagasy-error' }
+											});
+											const checkSpelling = async () => {
+												const textData = editor.getData().replace(/<[^>]+>/g, ' '); // Texte brut
+												
+												try {
+													// APPEL VERS TON API PYTHON (Port 8000 par défaut pour FastAPI)
+													const response = await fetch('http://localhost:8000/check_spelling', {
+														method: 'POST',
+														headers: { 'Content-Type': 'application/json' },
+														body: JSON.stringify({ text: textData })
+													});
+
+													const data = await response.json();
+													const unknownWords = data.unknown; // Liste des mots faux ex: ["motfaud", "testt"]
+
+													// Mise à jour de la liste pour le panneau latéral (optionnel)
+													setMalagasyErrors(unknownWords.map(w => ({ match: w, message: 'Mot inconnu' })));
+
+													// MISE A JOUR DES MARQUEURS (Surlignage)
+													editor.model.change(writer => {
+														// A. Nettoyer les anciens marqueurs rouges
+														for (const marker of editor.model.markers) {
+															if (marker.name.startsWith('malagasyError')) {
+																writer.removeMarker(marker);
+															}
+														}
+
+														// B. Trouver et souligner les nouveaux mots
+														if (unknownWords.length > 0) {
+															// On parcourt tout le document pour trouver les mots
+															const range = editor.model.createRangeIn(editor.model.document.getRoot());
+															
+															for (const item of range.getItems()) {
+																if (item.is('textProxy')) {
+																	const text = item.data;
+																	
+																	unknownWords.forEach(badWord => {
+																		// Recherche simple de toutes les occurrences du mot
+																		// Note: Pour un vrai projet pro, on utiliserait une recherche plus complexe (regex boundaries)
+																		let startIndex = 0;
+																		let index;
+																		
+																		while ((index = text.indexOf(badWord, startIndex)) > -1) {
+																			// Créer la position de début et de fin
+																			const start = writer.createPositionAt(item.parent, item.startOffset + index);
+																			const end = writer.createPositionAt(item.parent, item.startOffset + index + badWord.length);
+																			const currentRange = writer.createRange(start, end);
+
+																			// Ajouter le marqueur unique
+																			writer.addMarker(`malagasyError:${badWord}:${Math.random()}`, {
+																				range: currentRange,
+																				usingOperation: false // Marqueur local seulement
+																			});
+																			
+																			startIndex = index + 1;
+																		}
+																	});
+																}
+															}
+														}
+													});
+
+												} catch (err) {
+													console.error("Erreur connexion API Python:", err);
+												}
+											};
 
 											////////////////////////////////////////////////////////////
 											function replaceLastWord(editor, oldWord, newWord) {
@@ -563,7 +644,7 @@ export default function App() {
 													writer.remove(range);
 
 													// Insérer le nouveau mot
-													writer.insertText(newWord, startPosition);
+													writer.insertText(newWord+' ', startPosition);
 												});
 											}
 											function showSuggestionBalloon(editor, suggestion) {
@@ -610,13 +691,56 @@ export default function App() {
 											}
 
 											///////////////////////////////////////////////////////////
+											/*editor.editing.view.document.on('keydown', (evt, data) => {
+												if (data.keyCode === 32) {
+													// ⛔ Empêche l'espace automatique
+													evt.stop();
+													data.preventDefault();
+
+													const model = editor.model;
+													const selection = model.document.selection;
+													const position = selection.getFirstPosition();
+
+													const htmlContent = editor.getData();
+													const textOnly = htmlContent
+														.replace(/<[^>]*>/g, '')
+														.replace(/&nbsp;/g, ' ')
+														.trim();
+
+													const words = textOnly.split(/\s+/);
+													const lastWord = words[words.length - 1];
+
+													if (!lastWord) return;
+
+													fetch(`http://localhost:8000/getClosedWord/${encodeURIComponent(lastWord)}`)
+													.then(res => res.json())
+													.then(({ closed_word, distance }) => {
+														if (distance > 0) {
+															model.change(writer => {
+																const start = position.getShiftedBy(-lastWord.length);
+																const range = writer.createRange(start, position);
+
+																writer.remove(range);
+																writer.insertText(closed_word + ' ', start);
+															});
+														} else {
+															// mot correct → juste ajouter l’espace
+															model.change(writer => {
+																writer.insertText(' ', position);
+															});
+														}
+													});
+												}
+											});*/
 
 											// Écouter les frappes de touches
 											editor.editing.view.document.on('keydown', (evt, data) => {
 												console.log('Touche pressée:', data.key, data.keyCode);
 												// Espace = ' ' ou 'Space'
-												/*if (data.keyCode === ' ' || data.code === 'Space') {*/
+												//if (data.keyCode === ' ' || data.code === 'Space') {
 												if (data.keyCode==32){
+													evt.stop();
+													data.preventDefault();
 													// Récupérer le contenu HTML
 													console.log("Requete Commence ....");
 													const htmlContent = editor.getData();
@@ -682,6 +806,16 @@ export default function App() {
 														});
 												}
 											});
+
+											////////////////////////////////////////////////////////////////////////
+											let timeoutId;
+											editor.model.document.on('change:data', () => {
+												clearTimeout(timeoutId);
+												timeoutId = setTimeout(() => {
+													checkSpelling();
+												}, 1000); 
+											});
+											///////////////////////////////////////////////////////////////////////
 											
 											// Écouter les changements de texte
 											/*editor.model.document.on('change:data', () => {
