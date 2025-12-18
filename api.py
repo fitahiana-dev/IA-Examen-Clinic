@@ -20,4 +20,5 @@ def read_item(item_id: int, q: Union[str, None] = None):
 @app.get("/getClosedWord/{word}")
 def closed_word(word:str):
     a_comparator=levenshtein.Levenshtein("Dictionnaire/teny_clean.txt")
-    return {"closed_word":"exemple"}
+    mot_proche,dist=a_comparator.mot_proche(word)
+    return {"closed_word":mot_proche,"distance":dist}

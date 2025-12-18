@@ -1,6 +1,6 @@
 class Levenshtein:
     def __init__(self,lienDico):
-        self.charger_dico(lienDico)
+        self.dico=self.charger_dico(lienDico)
 
     # Alogirthme De Levenshtein
     def levenshtein(self,a: str, b: str) -> int:
@@ -33,11 +33,11 @@ class Levenshtein:
         with open(path, "r", encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip()]
     
-    def mot_proche(self,word,dico):
+    def mot_proche(self,word):
         best_word = None
         best_dist = float("inf")
 
-        for w in dico:
+        for w in self.dico:
             d = self.levenshtein(word, w)
             if d < best_dist:
                 best_dist = d
