@@ -19,9 +19,7 @@
   <source src="video/Demonstration.mp4" type="video/mp4">
 </video>
 
-[![Voir la vidéo](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://github.com/fitahiana-dev/IA-Examen-Clinic/blob/module-IA/video/Explication.mp4)
-[![Voir la vidéo](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://github.com/fitahiana-dev/IA-Examen-Clinic/blob/module-IA/video/Demonstration.mp4)
 
-https://github.com/fitahiana-dev/IA-Examen-Clinic/blob/module-IA/video/Demonstration.mp4
+[Video 1](https://drive.google.com/file/d/1osVr06bL3C6d4-NKhTFrr6zXKB7bZGK1/view?usp=drive_link)
 
-https://github.com/fitahiana-dev/IA-Examen-Clinic/blob/module-IA/video/Demonstration.mp4
+[Video 2](https://drive.google.com/file/d/1dtPIBzE7lzz9vlFEkDCRDY0f8UyyyLNy/view?usp=drive_link)
