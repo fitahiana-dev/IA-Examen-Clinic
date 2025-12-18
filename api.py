@@ -36,3 +36,47 @@ def closed_word(word:str):
 @app.get("/verifyWord/{word}")
 def verify_word(word:str):
     pass
+
+#######################################################################
+#######################################################################
+from pydantic import BaseModel
+import re
+import os
+
+DICTIONARY_PATH = os.path.join(os.path.dirname(__file__), "Dictionnaire/teny_clean.txt")
+VALID_WORDS = set()
+
+try:
+    with open(DICTIONARY_PATH, "r", encoding="utf-8") as f:
+        # On suppose un mot par ligne dans teny_clean.txt
+        content = f.read().splitlines()
+        VALID_WORDS = set(word.strip().lower() for word in content if word.strip())
+    print(f"✅ Dictionnaire chargé : {len(VALID_WORDS)} mots.")
+except FileNotFoundError:
+    print(f"❌ ERREUR : Impossible de trouver le fichier {DICTIONARY_PATH}")
+
+
+# Modèle de données reçu depuis React
+class TextPayload(BaseModel):
+    text: str
+
+#Endpoint Verification le mot Fait partie du Dictionnaire
+@app.post("/check_spelling")
+def check_spelling(payload: TextPayload):
+    """
+    Reçoit un texte, découpe les mots, et renvoie ceux qui ne sont pas dans le dictionnaire.
+    """
+    text = payload.text
+    # Regex pour isoler les mots (enlève ponctuation, chiffres)
+    words = re.findall(r"\b[a-zA-Zà-ÿÀ-Ÿ-]+\b", text)
+    
+    unknown_words = []
+    
+    for word in words:
+        clean_word = word.lower()
+        # Ignorer les mots très courts (1 lettre) ou s'ils sont dans le dico
+        if len(clean_word) > 1 and clean_word not in VALID_WORDS:
+            unknown_words.append(word)
+            
+    # On renvoie la liste unique pour éviter les doublons
+    return {"unknown": list(set(unknown_words))}
